@@ -12,7 +12,7 @@ void onServing(const char **addrs, int naddrs, void *udata) {
 }
 
 void route_get_hello(struct hs_udata *reqdata) {
-    http_parser_header_set(reqdata->reqres->response, "Content-Type", "text/plain");
+  http_parser_header_set(reqdata->reqres->response, "Content-Type", "text/plain");
   reqdata->reqres->response->body     = strdup("Hello World!!");
   reqdata->reqres->response->bodysize = strlen(reqdata->reqres->response->body);
   http_server_response_send(reqdata, true);
