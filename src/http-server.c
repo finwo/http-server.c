@@ -45,6 +45,7 @@ int64_t _hs_onTick(void *udata) {
 
 static void _hs_onRequest(struct http_parser_event *ev) {
   struct hs_udata *hsdata         = ev->udata;
+  struct evio_udata *info         = hsdata->info;
   struct hs_route *route          = registered_routes;
   struct hs_route *selected_route = NULL;
 
@@ -61,8 +62,13 @@ static void _hs_onRequest(struct http_parser_event *ev) {
 
   // No 404 handler (yet)
   if (!selected_route) {
-    evio_conn_close(hsdata->connection);
-    return;
+    if (info->hsevs->notFound) {
+      info->hsevs->notFound(hsdata);
+      return;
+    } else {
+      evio_conn_close(hsdata->connection);
+      return;
+    }
   }
 
   // Call the route handler
@@ -74,6 +80,7 @@ void _hs_onOpen(struct evio_conn *conn, void *udata) {
   struct evio_udata *info = udata;
   struct hs_udata *hsdata = malloc(sizeof(struct hs_udata));
   hsdata->connection = conn;
+  hsdata->info       = info;
   hsdata->reqres     = http_parser_pair_init(hsdata);
   hsdata->reqres->onRequest = _hs_onRequest;
   evio_conn_set_udata(conn, hsdata);
