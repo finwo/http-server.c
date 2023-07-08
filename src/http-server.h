@@ -19,7 +19,7 @@ struct http_server_events {
 };
 
 void http_server_response_send(struct hs_udata *hsdata, bool close);
-void http_server_route(char *method, char *path, void (*fn)(struct hs_udata*));
+void http_server_route(const char *method, const char *path, void (*fn)(struct hs_udata*));
 void http_server_main(char **addrs, int naddrs, struct http_server_events *hsevs, void *udata);
 
 #endif // __FINWO_HTTP_SERVER_H__

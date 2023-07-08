@@ -14,8 +14,8 @@ struct evio_udata {
 
 struct hs_route {
   void *next;
-  char *method;
-  char *path;
+  const char *method;
+  const char *path;
   void (*fn)(struct hs_udata*);
 };
 
@@ -112,7 +112,7 @@ void http_server_response_send(struct hs_udata *hsdata, bool close) {
   }
 }
 
-void http_server_route(char *method, char *path, void (*fn)(struct hs_udata*)) {
+void http_server_route(const char *method, const char *path, void (*fn)(struct hs_udata*)) {
   struct hs_route *route = calloc(1, sizeof(struct hs_route));
   route->next   = registered_routes;
   route->method = method;
