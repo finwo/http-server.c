@@ -3,53 +3,40 @@
 #include <string.h>
 
 #include "finwo/http-parser.h"
-#include "tidwall/evio.h"
+#include "finwo/fnet.h"
 
 #include "http-server.h"
 
-struct evio_udata {
-  struct http_server_events *hsevs;
-  void *udata;
+struct fnet_udata {
+  struct http_server_events *evs;
+  char                      *addr;
+  uint16_t                  port;
+  void                      *cudata;
 };
 
 struct hs_route {
   void *next;
   const char *method;
   const char *path;
-  void (*fn)(struct hs_udata*);
+  void (*fn)(struct http_server_reqdata*);
 };
 
 struct hs_route *registered_routes = NULL;
 
-void _hs_onServing(const char **addrs, int naddrs, void *udata) {
-  struct evio_udata *info = udata;
-  if (info->hsevs->serving) {
-    info->hsevs->serving(addrs, naddrs, info->udata);
-  }
-}
+void _hs_onServing(struct fnet_ev *ev) {
+  struct fnet_udata *ludata = ev->udata;
 
-void _hs_onError(const char *message, bool fatal, void *udata) {
-  struct evio_udata *info = udata;
-  if (info->hsevs->error) {
-    info->hsevs->error(message, fatal, info->udata);
+  if (ludata->evs && ludata->evs->serving) {
+    ludata->evs->serving(ludata->addr, ludata->port, ludata->cudata);
   }
-}
-
-int64_t _hs_onTick(void *udata) {
-  struct evio_udata *info = udata;
-  if (info->hsevs->tick) {
-    return info->hsevs->tick(info->udata);
-  }
-  return 1e9; // 1 second
 }
 
 static void _hs_onRequest(struct http_parser_event *ev) {
-  struct hs_udata *hsdata         = ev->udata;
-  struct evio_udata *info         = hsdata->info;
-  struct hs_route *route          = registered_routes;
-  struct hs_route *selected_route = NULL;
+  struct http_server_reqdata *reqdata = ev->udata;
+  struct hs_route *route              = registered_routes;
+  struct hs_route *selected_route     = NULL;
 
-  // Method/path matching, should be more intricate later
+  // Method/path matching, should be more intricate later (like /posts/:postId/comments)
   while(route) {
     if (
       (!strcmp(ev->request->method, route->method)) &&
@@ -60,60 +47,65 @@ static void _hs_onRequest(struct http_parser_event *ev) {
     route = route->next;
   }
 
-  // No 404 handler (yet)
   if (!selected_route) {
-    if (info->hsevs->notFound) {
-      info->hsevs->notFound(hsdata);
+    if (reqdata->evs && reqdata->evs->notFound) {
+      reqdata->evs->notFound(reqdata);
       return;
     } else {
-      evio_conn_close(hsdata->connection);
+      fnet_close(reqdata->connection);
       return;
     }
   }
 
   // Call the route handler
-  selected_route->fn(hsdata);
+  selected_route->fn(reqdata);
 }
 
-
-void _hs_onOpen(struct evio_conn *conn, void *udata) {
-  struct evio_udata *info = udata;
-  struct hs_udata *hsdata = malloc(sizeof(struct hs_udata));
-  hsdata->connection = conn;
-  hsdata->info       = info;
-  hsdata->reqres     = http_parser_pair_init(hsdata);
-  hsdata->reqres->onRequest = _hs_onRequest;
-  evio_conn_set_udata(conn, hsdata);
+void _hs_onData(struct fnet_ev *ev) {
+  struct http_server_reqdata *reqdata = ev->udata;
+  http_parser_pair_request_data(reqdata->reqres, ev->buffer);
 }
 
-void _hs_onClose(struct evio_conn *conn, void *udata) {
-  struct evio_udata *info   = udata;
-  struct hs_udata *hsdata = evio_conn_udata(conn);
+void _hs_onClose(struct fnet_ev *ev) {
+  struct http_server_reqdata *reqdata = ev->udata;
 
-  if (info->hsevs->close) {
-    info->hsevs->close(hsdata, info->udata);
+  if (reqdata->evs && reqdata->evs->close) {
+    reqdata->evs->close(reqdata);
   }
 
-  http_parser_pair_free(hsdata->reqres);
-  free(hsdata);
+  http_parser_pair_free(reqdata->reqres);
+  free(reqdata);
 }
 
-void _hs_onData(struct evio_conn *conn, const void *data, size_t len, void *udata) {
-  struct hs_udata *hsdata = evio_conn_udata(conn);
-  http_parser_pair_request_data(hsdata->reqres, data, len);
+void _hs_onConnect(struct fnet_ev *ev) {
+  struct fnet_t     *conn   = ev->connection;
+  struct fnet_udata *ludata = ev->udata;
+
+  // Setup new request/response pair
+  struct http_server_reqdata *reqdata = malloc(sizeof(struct http_server_reqdata));
+  reqdata->connection        = conn;
+  reqdata->reqres            = http_parser_pair_init(reqdata);
+  reqdata->reqres->onRequest = _hs_onRequest;
+  reqdata->evs               = ludata->evs;
+  ev->connection->udata      = reqdata;
+
+  // Setup data flowing from connection into reqres
+  ev->connection->onData  = _hs_onData;
+  ev->connection->onClose = _hs_onClose;
 }
 
-void http_server_response_send(struct hs_udata *hsdata, bool close) {
-  char *response_buffer = http_parser_sprint_response(hsdata->reqres->response);
-  evio_conn_write(hsdata->connection, response_buffer, strlen(response_buffer));
+void http_server_response_send(struct http_server_reqdata *reqdata, bool close) {
+  struct buf *response_buffer = http_parser_sprint_response(reqdata->reqres->response);
+  fnet_write(reqdata->connection, response_buffer);
+  buf_clear(response_buffer);
   free(response_buffer);
   if (close) {
-    evio_conn_close(hsdata->connection);
+    fnet_close(reqdata->connection);
   }
 }
 
-void http_server_route(const char *method, const char *path, void (*fn)(struct hs_udata*)) {
-  struct hs_route *route = calloc(1, sizeof(struct hs_route));
+void http_server_route(const char *method, const char *path, void (*fn)(struct http_server_reqdata*)) {
+  struct hs_route *route = malloc(sizeof(struct hs_route));
   route->next   = registered_routes;
   route->method = method;
   route->path   = path;
@@ -121,20 +113,25 @@ void http_server_route(const char *method, const char *path, void (*fn)(struct h
   registered_routes = route;
 }
 
-void http_server_main(char **addrs, int naddrs, struct http_server_events *hsevs, void *udata) {
-  struct evio_udata *info = calloc(1, sizeof(struct evio_udata));
-  info->hsevs  = hsevs;
-  info->udata  = udata;
+void http_server_main(const struct http_server_opts *opts) {
 
-  struct evio_events evs  = {
-    .serving = _hs_onServing,
-    .error   = _hs_onError,
-    .tick    = _hs_onTick,
-    .opened  = _hs_onOpen,
-    .closed  = _hs_onClose,
-    .data    = _hs_onData,
-  };
+  struct fnet_udata *ludata = calloc(1, sizeof(struct fnet_udata));
+  ludata->addr   = opts->addr,
+  ludata->port   = opts->port,
+  ludata->cudata = opts->udata,
+  ludata->evs    = opts->evs,
+
+  fnet_listen(opts->addr, opts->port, &((struct fnet_options_t){
+    .proto     = FNET_PROTO_TCP,
+    .flags     = 0,
+    .onListen  = _hs_onServing,
+    .onConnect = _hs_onConnect,
+    .onData    = NULL,
+    .onTick    = NULL,
+    .onClose   = NULL,
+    .udata     = ludata,
+  }));
 
   // This is a forever function
-  evio_main(addrs, naddrs, evs, info);
+  fnet_main();
 }

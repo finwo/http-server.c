@@ -4,22 +4,28 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct hs_udata {
-  struct evio_conn *connection;    // From the underlaying connection library
-  struct http_parser_pair *reqres; // The request/response pair
-  void *info;                      // See C file for definition, type not exported
+struct http_server_reqdata {
+  struct fnet_t             *connection; // From the underlaying connection library
+  struct http_parser_pair   *reqres;     // The request/response pair
+  struct http_server_events *evs;
+  void                      *udata;
+};
+
+struct http_server_opts {
+  struct http_server_events *evs;
+  char     *addr;
+  uint16_t port;
+  void     *udata;
 };
 
 struct http_server_events {
-  int64_t (*tick)(void *udata);
-  void (*serving)(const char **addrs, int naddrs, void *udata);
-  void (*error)(const char *message, bool fatal, void *udata);
-  void (*close)(struct hs_udata *conn, void *udata);
-  void (*notFound)(struct hs_udata*);
+  void (*serving)(char *addrs, uint16_t port, void *udata);
+  void (*close)(struct http_server_reqdata *reqdata);
+  void (*notFound)(struct http_server_reqdata *reqdata);
 };
 
-void http_server_response_send(struct hs_udata *hsdata, bool close);
-void http_server_route(const char *method, const char *path, void (*fn)(struct hs_udata*));
-void http_server_main(char **addrs, int naddrs, struct http_server_events *hsevs, void *udata);
+void http_server_main(const struct http_server_opts *opts);
+void http_server_response_send(struct http_server_reqdata *reqdata, bool close);
+void http_server_route(const char *method, const char *path, void (*fn)(struct http_server_reqdata*));
 
 #endif // __FINWO_HTTP_SERVER_H__
