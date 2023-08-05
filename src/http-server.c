@@ -121,7 +121,7 @@ void http_server_main(const struct http_server_opts *opts) {
   ludata->cudata = opts->udata;
   ludata->evs    = opts->evs;
 
-  if (fnet_listen(opts->addr, opts->port, &((struct fnet_options_t){
+  if (!fnet_listen(opts->addr, opts->port, &((struct fnet_options_t){
     .proto     = FNET_PROTO_TCP,
     .flags     = 0,
     .onListen  = _hs_onServing,
