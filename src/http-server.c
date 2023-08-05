@@ -116,12 +116,12 @@ void http_server_route(const char *method, const char *path, void (*fn)(struct h
 void http_server_main(const struct http_server_opts *opts) {
 
   struct fnet_udata *ludata = calloc(1, sizeof(struct fnet_udata));
-  ludata->addr   = opts->addr,
-  ludata->port   = opts->port,
-  ludata->cudata = opts->udata,
-  ludata->evs    = opts->evs,
+  ludata->addr   = opts->addr;
+  ludata->port   = opts->port;
+  ludata->cudata = opts->udata;
+  ludata->evs    = opts->evs;
 
-  fnet_listen(opts->addr, opts->port, &((struct fnet_options_t){
+  if (fnet_listen(opts->addr, opts->port, &((struct fnet_options_t){
     .proto     = FNET_PROTO_TCP,
     .flags     = 0,
     .onListen  = _hs_onServing,
@@ -130,7 +130,9 @@ void http_server_main(const struct http_server_opts *opts) {
     .onTick    = NULL,
     .onClose   = NULL,
     .udata     = ludata,
-  }));
+  }))) {
+    exit(1);
+  }
 
   // This is a forever function
   fnet_main();
