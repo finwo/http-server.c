@@ -13,9 +13,10 @@ struct http_server_reqdata {
 
 struct http_server_opts {
   struct http_server_events *evs;
-  char     *addr;
-  uint16_t port;
-  void     *udata;
+  char                      *addr;
+  uint16_t                  port;
+  void                      *udata;
+  struct fnet_t             *listen_connection;
 };
 
 struct http_server_events {
@@ -25,7 +26,7 @@ struct http_server_events {
   void (*tick)(void *udata);
 };
 
-void http_server_main(const struct http_server_opts *opts);
+void http_server_main(struct http_server_opts *opts);
 void http_server_response_send(struct http_server_reqdata *reqdata, bool close);
 void http_server_route(const char *method, const char *path, void (*fn)(struct http_server_reqdata*));
 

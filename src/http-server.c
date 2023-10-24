@@ -8,10 +8,8 @@
 #include "http-server.h"
 
 struct fnet_udata {
-  struct http_server_events *evs;
-  char                      *addr;
-  uint16_t                  port;
-  void                      *cudata;
+  struct http_server_opts *opts;
+  struct fnet_options_t   *fnet_opts;
 };
 
 struct hs_route {
@@ -26,16 +24,16 @@ struct hs_route *registered_routes = NULL;
 void _hs_onServing(struct fnet_ev *ev) {
   struct fnet_udata *ludata = ev->udata;
 
-  if (ludata->evs && ludata->evs->serving) {
-    ludata->evs->serving(ludata->addr, ludata->port, ludata->cudata);
+  if (ludata->opts->evs && ludata->opts->evs->serving) {
+    ludata->opts->evs->serving(ludata->opts->addr, ludata->opts->port, ludata->opts->udata);
   }
 }
 
 void _hs_onTick(struct fnet_ev *ev) {
   struct fnet_udata *ludata = ev->udata;
 
-  if (ludata->evs && ludata->evs->tick) {
-    ludata->evs->tick(ludata->cudata);
+  if (ludata->opts->evs && ludata->opts->evs->tick) {
+    ludata->opts->evs->tick(ludata->opts->udata);
   }
 }
 
@@ -94,7 +92,7 @@ void _hs_onConnect(struct fnet_ev *ev) {
   reqdata->connection        = conn;
   reqdata->reqres            = http_parser_pair_init(reqdata);
   reqdata->reqres->onRequest = _hs_onRequest;
-  reqdata->evs               = ludata->evs;
+  reqdata->evs               = ludata->opts->evs;
   ev->connection->udata      = reqdata;
 
   // Setup data flowing from connection into reqres
@@ -121,24 +119,32 @@ void http_server_route(const char *method, const char *path, void (*fn)(struct h
   registered_routes = route;
 }
 
-void http_server_main(const struct http_server_opts *opts) {
+void _hs_onListenClose(struct fnet_ev *ev) {
+  struct fnet_udata *ludata = ev->udata;
+  ludata->opts->listen_connection = fnet_listen(ludata->opts->addr, ludata->opts->port, ludata->fnet_opts);
+}
+
+void http_server_main(struct http_server_opts *opts) {
+  if (!opts) exit(1);
 
   struct fnet_udata *ludata = calloc(1, sizeof(struct fnet_udata));
-  ludata->addr   = opts->addr;
-  ludata->port   = opts->port;
-  ludata->cudata = opts->udata;
-  ludata->evs    = opts->evs;
+  ludata->opts = opts;
 
-  if (!fnet_listen(opts->addr, opts->port, &((struct fnet_options_t){
+  struct fnet_options_t fnet_opts = {
     .proto     = FNET_PROTO_TCP,
     .flags     = 0,
     .onListen  = _hs_onServing,
     .onConnect = _hs_onConnect,
     .onData    = NULL,
     .onTick    = _hs_onTick,
-    .onClose   = NULL,
+    .onClose   = _hs_onListenClose,
     .udata     = ludata,
-  }))) {
+  };
+
+  ludata->fnet_opts = &fnet_opts;
+
+  ludata->opts->listen_connection = fnet_listen(ludata->opts->addr, ludata->opts->port, ludata->fnet_opts);
+  if (!(ludata->opts->listen_connection)) {
     exit(1);
   }
 
