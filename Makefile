@@ -1,7 +1,7 @@
 BIN:=http-server
 
-CPP=g++
-CC=gcc
+CPP?=g++
+CC?=gcc
 
 LIBS:=
 SRC:=
@@ -21,6 +21,9 @@ OBJ:=$(OBJ:.cc=.o)
 
 override CFLAGS+=$(INCLUDES)
 
+LDFLAGS?=-s
+LDFLAGS+=$(CFLAGS)
+
 default: $(BIN)
 
 .PHONY: clean
@@ -28,4 +31,4 @@ clean:
 	rm -rf $(OBJ)
 
 $(BIN): $(OBJ)
-	$(CPP) $(LDFLAGS) $(OBJ) -o $@
+	$(CC) $(LDFLAGS) $(OBJ) -o $@
