@@ -22,6 +22,7 @@ struct http_server_events {
   void (*serving)(char *addrs, uint16_t port, void *udata);
   void (*close)(struct http_server_reqdata *reqdata);
   void (*notFound)(struct http_server_reqdata *reqdata);
+  void (*tick)(void *udata);
 };
 
 void http_server_main(const struct http_server_opts *opts);

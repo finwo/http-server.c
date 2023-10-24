@@ -11,6 +11,15 @@ void onServing(char *addr, uint16_t port, void *udata) {
   printf("Serving at %s:%d\n", addr, port);
 }
 
+int ticksHad = 0;
+void onTick(void *udata) {
+  printf("Tick %d\n", ticksHad);
+  if (++ticksHad >= 10) {
+    printf("10 seconds have passed\n");
+    ticksHad = 0;
+  }
+}
+
 void route_get_hello(struct http_server_reqdata *reqdata) {
   http_parser_header_set(reqdata->reqres->response, "Content-Type", "text/plain");
   reqdata->reqres->response->body       = calloc(1, sizeof(struct buf));
@@ -35,7 +44,8 @@ int main() {
   struct http_server_events evs = {
     .serving  = onServing,
     .close    = NULL,
-    .notFound = route_404
+    .notFound = route_404,
+    .tick     = onTick,
   };
 
   http_server_route("GET", "/hello", route_get_hello);

@@ -31,6 +31,14 @@ void _hs_onServing(struct fnet_ev *ev) {
   }
 }
 
+void _hs_onTick(struct fnet_ev *ev) {
+  struct fnet_udata *ludata = ev->udata;
+
+  if (ludata->evs && ludata->evs->tick) {
+    ludata->evs->tick(ludata->cudata);
+  }
+}
+
 static void _hs_onRequest(struct http_parser_event *ev) {
   struct http_server_reqdata *reqdata = ev->udata;
   struct hs_route *route              = registered_routes;
@@ -127,7 +135,7 @@ void http_server_main(const struct http_server_opts *opts) {
     .onListen  = _hs_onServing,
     .onConnect = _hs_onConnect,
     .onData    = NULL,
-    .onTick    = NULL,
+    .onTick    = _hs_onTick,
     .onClose   = NULL,
     .udata     = ludata,
   }))) {
