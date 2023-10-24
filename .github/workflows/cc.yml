@@ -3,8 +3,8 @@
 name: Build
 on:
   push:
-    # tags:
-    #   - '*'
+    tags:
+      - '*'
 
 jobs:
 
@@ -35,16 +35,15 @@ jobs:
         shell: bash
         run: |
           make CC=${{ matrix.cc }} BIN=${{ matrix.bin }}
-          # make check CC=${{ matrix.cc }} BIN=${{ matrix.bin }}
 
-      # - name: Upload binaries to release
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: ${{ matrix.bin }}
-      #     file_glob: true
-      #     overwrite: true
-      #     tag: ${{ github.ref }}
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ matrix.bin }}
+          file_glob: true
+          overwrite: true
+          tag: ${{ github.ref }}
 
   build-linux:
     name: Build & test
@@ -99,20 +98,18 @@ jobs:
 
           run: |
             make CC=${{ matrix.cc }} BIN=${{ matrix.bin }}
-            # make check CC=${{ matrix.cc }} BIN=${{ matrix.bin }}
 
       - if: ${{ matrix.arch == 'none' }}
         name: Build
         shell: bash
         run: |
           make CC=${{ matrix.cc }} BIN=${{ matrix.bin }}
-          # make check CC=${{ matrix.cc }} BIN=${{ matrix.bin }}
 
-      # - name: Upload binaries to release
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: ${{ matrix.bin }}
-      #     file_glob: true
-      #     overwrite: true
-      #     tag: ${{ github.ref }}
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ matrix.bin }}
+          file_glob: true
+          overwrite: true
+          tag: ${{ github.ref }}
