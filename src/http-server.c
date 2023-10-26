@@ -5,7 +5,6 @@
 
 #include "finwo/http-parser.h"
 #include "finwo/fnet.h"
-#include "pierreguillot/thread.h"
 
 #include "http-server.h"
 
@@ -147,7 +146,7 @@ void _hs_onListenClose(struct fnet_ev *ev) {
   }
 }
 
-void _thread_network(void *arg) {
+void http_server_fnet_thread(void *arg) {
   UNUSED(arg);
   FNET_RETURNCODE ret = fnet_main();
 }
@@ -180,11 +179,6 @@ void http_server_main(struct http_server_opts *opts) {
   if (!(ludata->opts->listen_connection)) {
     exit(1);
   }
-
-  // Launch network management thread
-  // May or may not keep running (either is fine)
-  thd_thread thread;
-  thd_thread_detach(&thread, _thread_network, NULL);
 
   // This is a forever function, controlled by network thread
   while(!opts->shutdown) {

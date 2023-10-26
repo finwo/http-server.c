@@ -5,7 +5,9 @@
 
 #include "finwo/fnet.h"
 #include "finwo/http-parser.h"
+#include "pierreguillot/thread.h"
 #include "tidwall/buf.h"
+
 
 #include "http-server.h"
 
@@ -82,8 +84,14 @@ int main() {
   http_server_route("GET" , "/hello", route_get_hello);
   http_server_route("POST", "/port" , route_post_port);
 
+  // Launch network management thread
+  thd_thread thread;
+  thd_thread_detach(&thread, http_server_fnet_thread, NULL);
+
   http_server_main(&opts);
   fnet_shutdown();
+
+  thd_thread_join(&thread);
 
   printf("Server has shut down\n");
 }
