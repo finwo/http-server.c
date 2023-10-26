@@ -8,10 +8,6 @@
 
 #include "http-server.h"
 
-#ifndef UNUSED(x)
-#define UNUSED(x) (void)x
-#endif
-
 static void sleep_ms(long ms) {
 #if defined(__APPLE__)
     usleep(ms * 1000);
@@ -144,11 +140,6 @@ void _hs_onListenClose(struct fnet_ev *ev) {
   if (!ludata->opts->shutdown) {
     ludata->opts->listen_connection = fnet_listen(ludata->opts->addr, ludata->opts->port, ludata->fnet_opts);
   }
-}
-
-void http_server_fnet_thread(void *arg) {
-  UNUSED(arg);
-  FNET_RETURNCODE ret = fnet_main();
 }
 
 void http_server_main(struct http_server_opts *opts) {

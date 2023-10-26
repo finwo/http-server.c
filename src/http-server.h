@@ -27,7 +27,6 @@ struct http_server_events {
   void (*tick)(void *udata);
 };
 
-void http_server_fnet_thread(void *arg);
 void http_server_main(struct http_server_opts *opts);
 void http_server_response_send(struct http_server_reqdata *reqdata, bool close);
 void http_server_route(const char *method, const char *path, void (*fn)(struct http_server_reqdata*));
