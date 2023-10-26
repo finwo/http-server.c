@@ -17,7 +17,7 @@ void onServing(char *addr, uint16_t port, void *udata) {
   printf("Serving at %s:%d\n", addr, port);
 }
 
-const int countDownOrg = 60;
+const int countDownOrg = 20;
 int       countDown    = countDownOrg;
 void onTick(void *udata) {
   struct http_server_opts *opts = udata;
@@ -86,7 +86,7 @@ int main() {
 
   // Launch network management thread
   thd_thread thread;
-  thd_thread_detach(&thread, http_server_fnet_thread, NULL);
+  thd_thread_detach(&thread, fnet_thread, NULL);
 
   http_server_main(&opts);
   fnet_shutdown();

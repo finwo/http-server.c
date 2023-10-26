@@ -1,3 +1,7 @@
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#endif
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +15,7 @@
 static void sleep_ms(long ms) {
 #if defined(__APPLE__)
     usleep(ms * 1000);
-#elif defined(_WIN32)
+#elif defined(_WIN32) || defined(_WIN64)
     Sleep(ms);
 #else
     time_t sec = (int)(ms / 1000);
