@@ -16,6 +16,7 @@ struct http_server_opts {
   char                      *addr;
   uint16_t                  port;
   void                      *udata;
+  bool                      shutdown;
   struct fnet_t             *listen_connection;
 };
 

@@ -1,11 +1,32 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "finwo/http-parser.h"
 #include "finwo/fnet.h"
+#include "pierreguillot/thread.h"
 
 #include "http-server.h"
+
+#ifndef UNUSED(x)
+#define UNUSED(x) (void)x
+#endif
+
+static void sleep_ms(long ms) {
+#if defined(__APPLE__)
+    usleep(ms * 1000);
+#elif defined(_WIN32)
+    Sleep(ms);
+#else
+    time_t sec = (int)(ms / 1000);
+    const long t = ms -(sec * 1000);
+    struct timespec req;
+    req.tv_sec = sec;
+    req.tv_nsec = t * 1000000L;
+    while(-1 == nanosleep(&req, &req));
+#endif
+}
 
 struct fnet_udata {
   struct http_server_opts *opts;
@@ -124,12 +145,20 @@ void _hs_onListenClose(struct fnet_ev *ev) {
   ludata->opts->listen_connection = fnet_listen(ludata->opts->addr, ludata->opts->port, ludata->fnet_opts);
 }
 
+void _thread_network(void *arg) {
+  UNUSED(arg);
+  FNET_RETURNCODE ret = fnet_main();
+}
+
 void http_server_main(struct http_server_opts *opts) {
   if (!opts) exit(1);
+  opts->shutdown = false;
 
+  // Prepare http context
   struct fnet_udata *ludata = calloc(1, sizeof(struct fnet_udata));
   ludata->opts = opts;
 
+  // Prepare network options
   struct fnet_options_t fnet_opts = {
     .proto     = FNET_PROTO_TCP,
     .flags     = 0,
@@ -141,13 +170,22 @@ void http_server_main(struct http_server_opts *opts) {
     .udata     = ludata,
   };
 
-  ludata->fnet_opts = &fnet_opts;
+  // Track network options in http context
+  ludata->fnet_opts   = &fnet_opts;
 
+  // Signal that we want our port
   ludata->opts->listen_connection = fnet_listen(ludata->opts->addr, ludata->opts->port, ludata->fnet_opts);
   if (!(ludata->opts->listen_connection)) {
     exit(1);
   }
 
-  // This is a forever function
-  fnet_main();
+  // Launch network management thread
+  // May or may not keep running (either is fine)
+  thd_thread thread;
+  thd_thread_detach(&thread, _thread_network, NULL);
+
+  // This is a forever function, controlled by network thread
+  while(!opts->shutdown) {
+    sleep_ms(100);
+  }
 }

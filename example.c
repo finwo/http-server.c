@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,19 +15,24 @@ void onServing(char *addr, uint16_t port, void *udata) {
   printf("Serving at %s:%d\n", addr, port);
 }
 
-int ticksHad = 0;
+const int countDownOrg = 60;
+int       countDown    = countDownOrg;
 void onTick(void *udata) {
-  printf("Tick %d\n", ticksHad);
-  if (++ticksHad >= 10) {
-    printf("10 seconds have passed\n");
-    ticksHad = 0;
+  struct http_server_opts *opts = udata;
+
+  // Handle auto-shutdown
+  printf("Shutdown in %d second(s)\n", --countDown);
+  if (countDown <= 0) {
+    opts->shutdown = true;
+    return;
   }
 
-  struct http_server_opts *opts = udata;
+  // Handle port re-assign
   if (opts->port != targetPort) {
     opts->port = targetPort;
     fnet_close(opts->listen_connection);
   }
+
 }
 
 void route_get_hello(struct http_server_reqdata *reqdata) {
@@ -35,6 +41,7 @@ void route_get_hello(struct http_server_reqdata *reqdata) {
   reqdata->reqres->response->body->data = strdup("Hello World\n");
   reqdata->reqres->response->body->len  = strlen(reqdata->reqres->response->body->data);
   http_server_response_send(reqdata, true);
+  countDown = countDownOrg;
   return;
 }
 
@@ -76,4 +83,7 @@ int main() {
   http_server_route("POST", "/port" , route_post_port);
 
   http_server_main(&opts);
+  fnet_shutdown();
+
+  printf("Server has shut down\n");
 }
