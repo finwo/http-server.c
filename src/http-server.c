@@ -142,7 +142,9 @@ void http_server_route(const char *method, const char *path, void (*fn)(struct h
 
 void _hs_onListenClose(struct fnet_ev *ev) {
   struct fnet_udata *ludata = ev->udata;
-  ludata->opts->listen_connection = fnet_listen(ludata->opts->addr, ludata->opts->port, ludata->fnet_opts);
+  if (!ludata->opts->shutdown) {
+    ludata->opts->listen_connection = fnet_listen(ludata->opts->addr, ludata->opts->port, ludata->fnet_opts);
+  }
 }
 
 void _thread_network(void *arg) {
