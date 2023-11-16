@@ -91,6 +91,7 @@ static void _hs_onRequest(struct http_parser_event *ev) {
 
 void _hs_onData(struct fnet_ev *ev) {
   struct http_server_reqdata *reqdata = ev->udata;
+  printf("Data received(%d): %s\n", ev->buffer->len, ev->buffer->data);
   http_parser_pair_request_data(reqdata->reqres, ev->buffer);
 }
 
