@@ -64,6 +64,11 @@ static void _hs_onRequest(struct http_parser_event *ev) {
   struct hs_route *route              = registered_routes;
   struct hs_route *selected_route     = NULL;
 
+  printf("Request detected: %s %s\n",
+    ev->request->method,
+    ev->request->path
+  );
+
   // Method/path matching, should be more intricate later (like /posts/:postId/comments)
   while(route) {
     if (

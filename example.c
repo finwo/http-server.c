@@ -26,6 +26,7 @@ void onTick(void *udata) {
   printf("Shutdown in %d second(s)\n", --countDown);
   if (countDown <= 0) {
     opts->shutdown = true;
+    fnet_shutdown();
     return;
   }
 
@@ -84,14 +85,14 @@ int main() {
   http_server_route("GET" , "/hello", route_get_hello);
   http_server_route("POST", "/port" , route_post_port);
 
-  // Launch network management thread
-  thd_thread thread;
-  thd_thread_detach(&thread, fnet_thread, NULL);
+  /* // Launch network management thread */
+  /* thd_thread thread; */
+  /* thd_thread_detach(&thread, fnet_thread, NULL); */
 
   http_server_main(&opts);
   fnet_shutdown();
 
-  thd_thread_join(&thread);
+  /* thd_thread_join(&thread); */
 
   printf("Server has shut down\n");
 }
