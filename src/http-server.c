@@ -180,7 +180,9 @@ void http_server_main(struct http_server_opts *opts) {
 
   // This is a forever function, controlled by network thread
   while(!opts->shutdown) {
+    printf("(re)starting fnet_main\n");
     ret = fnet_main();
+    printf("fnet_main returned %d\n", ret);
     if (ret) exit(ret);
     sleep_ms(100);
   }
