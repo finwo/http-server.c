@@ -149,6 +149,7 @@ void _hs_onListenClose(struct fnet_ev *ev) {
 }
 
 void http_server_main(struct http_server_opts *opts) {
+  int ret;
   if (!opts) exit(1);
   opts->shutdown = false;
 
@@ -179,6 +180,8 @@ void http_server_main(struct http_server_opts *opts) {
 
   // This is a forever function, controlled by network thread
   while(!opts->shutdown) {
+    ret = fnet_main();
+    if (ret) exit(ret);
     sleep_ms(100);
   }
 }
