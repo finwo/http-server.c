@@ -64,11 +64,6 @@ static void _hs_onRequest(struct http_parser_event *ev) {
   struct hs_route *route              = registered_routes;
   struct hs_route *selected_route     = NULL;
 
-  printf("Request detected: %s %s\n",
-    ev->request->method,
-    ev->request->path
-  );
-
   // Method/path matching, should be more intricate later (like /posts/:postId/comments)
   while(route) {
     if (
@@ -96,7 +91,6 @@ static void _hs_onRequest(struct http_parser_event *ev) {
 
 void _hs_onData(struct fnet_ev *ev) {
   struct http_server_reqdata *reqdata = ev->udata;
-  printf("Data received(%d): %s\n", ev->buffer->len, ev->buffer->data);
   http_parser_pair_request_data(reqdata->reqres, ev->buffer);
 }
 
@@ -186,9 +180,7 @@ void http_server_main(struct http_server_opts *opts) {
 
   // This is a forever function, controlled by network thread
   while(!opts->shutdown) {
-    printf("(re)starting fnet_main\n");
     ret = fnet_main();
-    printf("fnet_main returned %d\n", ret);
     if (ret) exit(ret);
     sleep_ms(100);
   }
