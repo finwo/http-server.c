@@ -116,6 +116,7 @@ void _hs_onConnect(struct fnet_ev *ev) {
   reqdata->reqres            = http_parser_pair_init(reqdata);
   reqdata->reqres->onRequest = _hs_onRequest;
   reqdata->evs               = ludata->opts->evs;
+  reqdata->udata             = ludata->opts->udata;
   ev->connection->udata      = reqdata;
 
   // Setup data flowing from connection into reqres
