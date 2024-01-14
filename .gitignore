@@ -1,3 +1,5 @@
 /lib/
 *.o
 /http-server
+/.cache/
+/compile_commands.json
