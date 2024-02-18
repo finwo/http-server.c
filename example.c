@@ -48,6 +48,22 @@ void route_get_hello(struct http_server_reqdata *reqdata) {
   return;
 }
 
+void route_get_hello_named(struct http_server_reqdata *reqdata) {
+  http_parser_header_set(reqdata->reqres->response, "Content-Type", "text/plain");
+
+  const char *name = http_parser_tag_get(reqdata->reqres->request, "param:name");
+  if (!name) name = "there";
+
+  reqdata->reqres->response->body       = calloc(1, sizeof(struct buf));
+  reqdata->reqres->response->body->data = calloc(7 + strlen(name), sizeof(char));
+  strcat(reqdata->reqres->response->body->data, "Hello ");
+  strcat(reqdata->reqres->response->body->data, name);
+  reqdata->reqres->response->body->len  = strlen(reqdata->reqres->response->body->data);
+  http_server_response_send(reqdata, true);
+  countDown = countDownOrg;
+  return;
+}
+
 void route_post_port(struct http_server_reqdata *reqdata) {
   http_parser_header_set(reqdata->reqres->response, "Content-Type", "text/plain");
   targetPort = atoi(reqdata->reqres->request->body->data);
@@ -82,8 +98,9 @@ int main() {
     .udata = &opts,
   };
 
-  http_server_route("GET" , "/hello", route_get_hello);
-  http_server_route("POST", "/port" , route_post_port);
+  http_server_route("GET" , "/hello"      , route_get_hello);
+  http_server_route("POST", "/port"       , route_post_port);
+  http_server_route("GET" , "/hello/:name", route_get_hello_named);
 
   /* // Launch network management thread */
   /* thd_thread thread; */

@@ -38,11 +38,26 @@ struct fnet_udata {
 struct hs_route {
   void *next;
   const char *method;
-  const char *path;
+  char **path;
   void (*fn)(struct http_server_reqdata*);
 };
 
 struct hs_route *registered_routes = NULL;
+
+char ** _hs_pathTokens(const char *path) {
+  char **output = calloc(strlen(path), sizeof(char*));
+
+  int token_count = 0;
+  char *dupped = strdup(path);
+  char *rest = dupped;
+  char *token;
+  while((token = strtok_r(rest, "/", &rest))) {
+    output[token_count++] = strdup(token);
+  }
+  free(dupped);
+
+  return output;
+}
 
 void _hs_onServing(struct fnet_ev *ev) {
   struct fnet_udata *ludata = ev->udata;
@@ -65,15 +80,61 @@ static void _hs_onRequest(struct http_parser_event *ev) {
   struct hs_route *route              = registered_routes;
   struct hs_route *selected_route     = NULL;
 
-  // Method/path matching, should be more intricate later (like /posts/:postId/comments)
+  // Tokenize the given path only once
+  char **pathTokens = _hs_pathTokens(ev->request->path);
+  char **routeTokens;
+  char *tag = calloc(strlen(ev->request->path), sizeof(char));
+  int i;
+
+  // Method/path matching
   while(route) {
-    if (
-      (!strcmp(ev->request->method, route->method)) &&
-      (!strcmp(ev->request->path  , route->path  ))
-    ) {
-      selected_route = route;
+
+    // Skip route if the method doesn't match
+    if (strcmp(ev->request->method, route->method)) {
+      route = route->next;
+      continue; // Continues while(route)
     }
-    route = route->next;
+
+    // Checking if the path matches
+    routeTokens = route->path;
+    i = 0;
+
+    while((pathTokens[i] && routeTokens[i])) {
+      if (routeTokens[i][0] == ':') { i++; continue; }
+      if (strcmp(pathTokens[i], routeTokens[i])) {
+        i = -1;
+        break; // Breaks token-checking
+      }
+      i++;
+    }
+
+    // Content mismatch
+    if (i == -1) {
+      route = route->next;
+      continue; // Continues while(route)
+    }
+
+    // Length mismatch
+    if (pathTokens[i] || routeTokens[i]) {
+      route = route->next;
+      continue;
+    }
+
+    // Here = route match
+
+    // Store url params as tag 'param:<name>' = 'path[i]
+    i = 0;
+    while((pathTokens[i] && routeTokens[i])) {
+      if (routeTokens[i][0] != ':') { i++; continue; }
+      tag[0] = '\0';
+      strcat(tag, "param:");
+      strcat(tag, routeTokens[i]+1);
+      http_parser_tag_set(ev->request, tag, pathTokens[i]);
+      i++;
+    }
+
+    selected_route = route;
+    break;
   }
 
   if (!selected_route) {
@@ -138,8 +199,8 @@ void http_server_route(const char *method, const char *path, void (*fn)(struct h
   struct hs_route *route = malloc(sizeof(struct hs_route));
   route->next   = registered_routes;
   route->method = method;
-  route->path   = path;
   route->fn     = fn;
+  route->path   = _hs_pathTokens(path);
   registered_routes = route;
 }
 
