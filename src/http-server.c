@@ -49,10 +49,10 @@ char ** _hs_pathTokens(const char *path) {
 
   int token_count = 0;
   char *dupped = strdup(path);
-  char *rest = dupped;
-  char *token;
-  while((token = strtok_r(rest, "/", &rest))) {
+  char *token = strtok(dupped, "/");
+  while(token != NULL) {
     output[token_count++] = strdup(token);
+    token = strtok(NULL, "/");
   }
   free(dupped);
 
