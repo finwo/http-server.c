@@ -51,7 +51,7 @@ void route_get_hello(struct http_server_reqdata *reqdata) {
 void route_get_hello_named(struct http_server_reqdata *reqdata) {
   http_parser_header_set(reqdata->reqres->response, "Content-Type", "text/plain");
 
-  const char *name = http_parser_tag_get(reqdata->reqres->request, "param:name");
+  const char *name = http_parser_meta_get(reqdata->reqres->request, "param:name");
   if (!name) name = "there";
 
   reqdata->reqres->response->body       = calloc(1, sizeof(struct buf));

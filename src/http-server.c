@@ -83,7 +83,7 @@ static void _hs_onRequest(struct http_parser_event *ev) {
   // Tokenize the given path only once
   char **pathTokens = _hs_pathTokens(ev->request->path);
   char **routeTokens;
-  char *tag = calloc(strlen(ev->request->path), sizeof(char));
+  char *meta = calloc(strlen(ev->request->path), sizeof(char));
   int i;
 
   // Method/path matching
@@ -122,14 +122,14 @@ static void _hs_onRequest(struct http_parser_event *ev) {
 
     // Here = route match
 
-    // Store url params as tag 'param:<name>' = 'path[i]
+    // Store url params as meta 'param:<name>' = 'path[i]
     i = 0;
     while((pathTokens[i] && routeTokens[i])) {
       if (routeTokens[i][0] != ':') { i++; continue; }
-      tag[0] = '\0';
-      strcat(tag, "param:");
-      strcat(tag, routeTokens[i]+1);
-      http_parser_tag_set(ev->request, tag, pathTokens[i]);
+      meta[0] = '\0';
+      strcat(meta, "param:");
+      strcat(meta, routeTokens[i]+1);
+      http_parser_meta_set(ev->request, meta, pathTokens[i]);
       i++;
     }
 
